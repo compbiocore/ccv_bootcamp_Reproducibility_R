@@ -1,0 +1,118 @@
+---
+title: "Reproducibility in R Bootcamp 2025"
+author: "Eric Salomaki"
+date: "2025-05-22"
+output: html_document
+---
+
+```{r}
+library(here)
+library(kableExtra)
+library(patchwork)
+library(pheatmap)
+library(ggupset)
+library(DESeq2)
+library(pathview)
+library(apeglm)
+library(IHW)
+library(ggplot2)
+library(ggrepel)
+library(sva)
+```
+
+## here sets a location relative to the R script
+```{r}
+here::i_am("reproducibility_in_r.Rmd")
+```
+
+## lets set here to the top directory of the repo
+```{r}
+here::i_am("notebook/reproducibility_in_r.Rmd")
+```
+
+
+## now we can easily read in some data
+```{r}
+counts_matrix <- read.csv(here("data","sample_data.tsv"), sep = "\t", header = TRUE, row.names = 1)
+counts_matrix
+```
+
+## And read in the sample metadata
+```{r}
+metadata <- read.csv(here("data","sample_metadata.tsv"), sep = "\t", header = TRUE, row.names = 1)
+metadata
+```
+
+## Now make DESeq dataset
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = counts_matrix,
+                              colData = metadata,
+                              design = ~ condition)
+dds
+```
+
+## And run DESeq2
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+rld <- rlog(dds, blind = FALSE)
+res_shrunk <- lfcShrink(dds, coef = "condition_Treatment_vs_Control")
+```
+
+
+# Plot PCA of data
+```{r}
+plotPCA(rld)
+```
+
+
+
+```{r}
+sampleDists <- dist(t(assay(rld)))
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- colnames(rld)
+colnames(sampleDistMatrix) <- colnames(rld)
+
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         main = "Sample-to-sample distances")
+```
+
+### Make a volcano plot
+```{r}
+plotMA(res_shrunk, main = "MA Plot (shrunken LFC)", ylim = c(-3, 3))
+```
+
+
+
+### Make a volcano plot
+```{r}
+res_df <- as.data.frame(res_shrunk)
+res_df$gene <- rownames(res_df)
+res_df$significant <- with(res_df, padj < 0.05 & abs(log2FoldChange) > 2)
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_point(aes(color = significant), alpha = 0.7) +
+  scale_color_manual(values = c("black", "red")) +
+  geom_vline(xintercept = c(-2, 2), linetype = "dashed", color = "gray") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "gray") +
+  geom_text_repel(data = subset(res_df, significant),
+                  aes(label = gene),
+                  size = 3,
+                  max.overlaps = 20,
+                  box.padding = 0.3,
+                  point.padding = 0.2) +
+  theme_minimal() +
+  labs(title = "Volcano Plot", x = "Log2 Fold Change", y = "-Log10 p-value")
+```
+
+
+## Finally we will print the session info
+```{r}
+sessionInfo()
+```
+
+
+
+
