@@ -18,4 +18,3 @@ RUN R -e "BiocManager::install('sva')"
 
 # Add rsession symlink
 RUN ln -s /usr/lib/rstudio-server/bin/rsession /usr/local/bin/rsession
-
