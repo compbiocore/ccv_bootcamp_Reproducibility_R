@@ -17,6 +17,7 @@ library(apeglm)
 library(IHW)
 library(ggplot2)
 library(ggrepel)
+library(qs2)
 library(sva)
 ```
 
@@ -59,14 +60,28 @@ rld <- rlog(dds, blind = FALSE)
 res_shrunk <- lfcShrink(dds, coef = "condition_Treatment_vs_Control")
 ```
 
+## Save your DESeq outputs (or any analysis files that take a long time to run)
+```{r}
+# Save as a qs2 object using qs2 package fucntions
+qs_save(dds, here("data","DESeq_dds.qs2"))
+# Read a qs2 object and validate file integrity
+dds <- qs_read(here("data","DESeq_dds.qs2"), validate_checksum = TRUE) 
 
-# Plot PCA of data
+# For small files, base R functions work similarly
+# Save as a RDS object using base R fucntions
+saveRDS(dds, here("data","DESeq_dds.RDS"))
+# Read a a RDS object, lacks the ability to validate file integrity
+dds2 <- readRDS(here("data","DESeq_dds.RDS")) 
+```
+
+
+## Plot PCA of data
 ```{r}
 plotPCA(rld)
 ```
 
 
-
+## Make a sample distance plot
 ```{r}
 sampleDists <- dist(t(assay(rld)))
 sampleDistMatrix <- as.matrix(sampleDists)
@@ -79,7 +94,7 @@ pheatmap(sampleDistMatrix,
          main = "Sample-to-sample distances")
 ```
 
-### Make a volcano plot
+### Make an MA plot
 ```{r}
 plotMA(res_shrunk, main = "MA Plot (shrunken LFC)", ylim = c(-3, 3))
 ```
